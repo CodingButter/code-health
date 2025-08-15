@@ -34,8 +34,25 @@
     "typescript",
     "javascript"
   ],
-  "author": "",
+  "author": "CodingButter",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CodingButter/code-health.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CodingButter/code-health/issues"
+  },
+  "homepage": "https://github.com/CodingButter/code-health#readme",
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@fastify/cors": "^9.0.0",
     "@fastify/static": "^7.0.0",
