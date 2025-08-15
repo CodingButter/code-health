@@ -33,7 +33,9 @@ export class WatchManager extends EventEmitter {
       ignored: this.ignoreConfig.patterns,
       persistent: true,
       ignoreInitial: true,
-      depth: 99
+      depth: 99,
+      ignorePermissionErrors: true,
+      followSymlinks: false
     });
     
     // Set up event handlers
@@ -41,7 +43,14 @@ export class WatchManager extends EventEmitter {
       .on('add', (path) => this.handleChange('add', path))
       .on('change', (path) => this.handleChange('change', path))
       .on('unlink', (path) => this.handleChange('unlink', path))
-      .on('error', (error) => console.error('Watcher error:', error));
+      .on('error', (error: any) => {
+        // Gracefully handle permission errors and other watch errors
+        if (error.message?.includes('EACCES') || error.message?.includes('permission denied')) {
+          console.log(`Skipping directory with permission issues: ${error.path || 'unknown'}`);
+        } else {
+          console.error('Watcher error:', error);
+        }
+      });
     
     console.log('File watcher started. Watching for changes...');
   }
@@ -133,7 +142,9 @@ export function watchForChanges(config: Config, callback: () => void): chokidar.
     ignored: ignoreConfig.patterns,
     persistent: true,
     ignoreInitial: true,
-    depth: 99
+    depth: 99,
+    ignorePermissionErrors: true,
+    followSymlinks: false
   });
   
   let debounceTimer: NodeJS.Timeout | null = null;

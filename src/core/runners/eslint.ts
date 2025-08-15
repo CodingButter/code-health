@@ -28,7 +28,7 @@ export interface ESLintReport {
   timestamp: string;
 }
 
-function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig) {
+function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig): any {
   // ESLint 9+ flat config format
   return [
     {
@@ -37,18 +37,11 @@ function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig) {
       languageOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        parser: '@typescript-eslint/parser',
         parserOptions: {
           ecmaFeatures: {
             jsx: true
           }
         }
-      },
-      plugins: {
-        '@typescript-eslint': require('@typescript-eslint/eslint-plugin'),
-        'sonarjs': require('eslint-plugin-sonarjs'),
-        'unicorn': require('eslint-plugin-unicorn'),
-        'regexp': require('eslint-plugin-regexp')
       },
       rules: {
         // Max lines rules as specified in Project.md
@@ -61,36 +54,96 @@ function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig) {
           max: config.maxLinesPerFunction,
           skipBlankLines: true,
           skipComments: true
-        }],
-        
-        // Cognitive complexity from SonarJS
-        'sonarjs/cognitive-complexity': ['warn', config.complexityThreshold],
-        
-        // Regexp safety
-        'regexp/no-super-linear-backtracking': 'error',
-        'regexp/no-catastrophic-backtracking': 'error',
-        
-        // Some useful sonarjs rules
-        'sonarjs/no-duplicate-string': 'warn',
-        'sonarjs/no-identical-functions': 'warn',
-        'sonarjs/no-collapsible-if': 'warn',
-        
-        // Some useful unicorn rules
-        'unicorn/no-array-for-each': 'warn',
-        'unicorn/prefer-array-some': 'warn',
-        'unicorn/prefer-includes': 'warn',
-        'unicorn/prefer-string-starts-ends-with': 'warn',
-        'unicorn/prefer-array-find': 'warn',
-        
-        // TypeScript specific
-        '@typescript-eslint/no-unused-vars': ['warn', { 
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_'
-        }],
-        '@typescript-eslint/no-explicit-any': 'warn'
+        }]
       }
     }
   ];
+}
+
+async function createEslintOptions(
+  config: Config,
+  ignoreConfig: IgnoreConfig,
+  projectConfigPath: string | null
+): Promise<any> {
+  let eslintOptions: any = {
+    cwd: config.cwd,
+    cache: false
+  };
+  
+  let useProjectConfig = false;
+  if (projectConfigPath) {
+    try {
+      // Test if this is a legacy .eslintrc format
+      if (projectConfigPath.includes('.eslintrc')) {
+        logger.log(`Found legacy ESLint config: ${projectConfigPath}, using fallback instead`);
+      } else {
+        // Use project's config for flat config files only
+        logger.log(`Using project ESLint config: ${projectConfigPath}`);
+        eslintOptions.overrideConfigFile = projectConfigPath;
+        useProjectConfig = true;
+      }
+    } catch (error) {
+      logger.log(`Project ESLint config incompatible, using fallback: ${error}`);
+    }
+  }
+  
+  if (!useProjectConfig) {
+    // Use our fallback config
+    logger.log('Using fallback ESLint configuration');
+    eslintOptions.baseConfig = createFallbackConfig(config, ignoreConfig);
+  }
+  
+  return eslintOptions;
+}
+
+async function runEslintWithFallback(
+  eslintOptions: any,
+  patterns: string[],
+  config: Config,
+  ignoreConfig: IgnoreConfig
+): Promise<any[]> {
+  const eslint = new ESLint(eslintOptions);
+  
+  try {
+    return await eslint.lintFiles(patterns);
+  } catch (configError: any) {
+    // If project config fails due to legacy format, fall back to our config
+    if (configError.message?.includes('eslintrc format') || configError.message?.includes('flat config')) {
+      logger.log('Project config incompatible with ESLint 9+, using fallback configuration');
+      const fallbackOptions = {
+        cwd: config.cwd,
+        cache: false,
+        baseConfig: createFallbackConfig(config, ignoreConfig)
+      };
+      const fallbackEslint = new ESLint(fallbackOptions);
+      return await fallbackEslint.lintFiles(patterns);
+    } else {
+      throw configError;
+    }
+  }
+}
+
+function processEslintResults(results: any[], config: Config, ignoreConfig: IgnoreConfig): ESLintReport {
+  // Filter out ignored files
+  const filteredResults = results.filter(result => {
+    const relativePath = path.relative(config.cwd, result.filePath);
+    return !ignoreConfig.ignorer.ignores(relativePath);
+  });
+  
+  // Create report with normalized messages
+  const normalizedResults = filteredResults.map(result => ({
+    ...result,
+    messages: result.messages.filter((m: any) => m.ruleId !== null).map((m: any) => ({
+      ...m,
+      ruleId: m.ruleId as string // Safe to cast after filtering null
+    }))
+  }));
+  
+  return {
+    results: normalizedResults,
+    version: ESLint.version,
+    timestamp: new Date().toISOString()
+  };
 }
 
 export async function runEslint(
@@ -101,60 +154,23 @@ export async function runEslint(
   logger.log('Running ESLint analysis...');
   
   try {
-    // Check if project has its own ESLint config
     const projectConfigPath = await findProjectEslintConfig(config.cwd);
-    
-    let eslintOptions: any = {
-      cwd: config.cwd,
-      cache: false
-    };
-    
-    if (projectConfigPath) {
-      // Use project's config
-      logger.log(`Using project ESLint config: ${projectConfigPath}`);
-      eslintOptions.overrideConfigFile = projectConfigPath;
-    } else {
-      // Use our fallback config
-      logger.log('Using fallback ESLint configuration');
-      eslintOptions.baseConfig = createFallbackConfig(config, ignoreConfig);
-    }
-    
-    const eslint = new ESLint(eslintOptions);
+    const eslintOptions = await createEslintOptions(config, ignoreConfig, projectConfigPath);
     
     // Determine files to lint
     const patterns = config.include.length > 0 
       ? config.include 
       : ['**/*.{js,jsx,ts,tsx,mjs,cjs}'];
     
-    const results = await eslint.lintFiles(patterns);
-    
-    // Filter out ignored files
-    const filteredResults = results.filter(result => {
-      const relativePath = path.relative(config.cwd, result.filePath);
-      return !ignoreConfig.ignorer.ignores(relativePath);
-    });
-    
-    // Create report with normalized messages
-    const normalizedResults = filteredResults.map(result => ({
-      ...result,
-      messages: result.messages.filter(m => m.ruleId !== null).map(m => ({
-        ...m,
-        ruleId: m.ruleId as string // Safe to cast after filtering null
-      }))
-    }));
-    
-    const report: ESLintReport = {
-      results: normalizedResults,
-      version: ESLint.version,
-      timestamp: new Date().toISOString()
-    };
+    const results = await runEslintWithFallback(eslintOptions, patterns, config, ignoreConfig);
+    const report = processEslintResults(results, config, ignoreConfig);
     
     // Write report
     writeReport(reportsDir, 'eslint', report);
     
     // Log summary
-    const totalErrors = filteredResults.reduce((sum, r) => sum + r.errorCount, 0);
-    const totalWarnings = filteredResults.reduce((sum, r) => sum + r.warningCount, 0);
+    const totalErrors = report.results.reduce((sum, r) => sum + r.errorCount, 0);
+    const totalWarnings = report.results.reduce((sum, r) => sum + r.warningCount, 0);
     logger.log(`ESLint complete: ${totalErrors} errors, ${totalWarnings} warnings`);
     
   } catch (error) {

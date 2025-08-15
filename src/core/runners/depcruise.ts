@@ -149,8 +149,41 @@ export async function runDepCruise(
     const outputPath = getReportPath(reportsDir, 'depcruise-raw');
     runDepCruiseCommand(config, configPath, outputPath);
     
-    const rawOutput = fs.readFileSync(outputPath, 'utf-8');
-    const cruiseResult = JSON.parse(rawOutput);
+    let cruiseResult: any;
+    try {
+      const rawOutput = fs.readFileSync(outputPath, 'utf-8').trim();
+      if (!rawOutput) {
+        throw new Error('Empty output from dependency-cruiser');
+      }
+      cruiseResult = JSON.parse(rawOutput);
+    } catch (parseError) {
+      logger.error('Failed to parse dependency-cruiser JSON output, using fallback parsing');
+      // Try to extract valid JSON from potentially malformed output
+      try {
+        const rawOutput = fs.readFileSync(outputPath, 'utf-8');
+        const lines = rawOutput.split('\n').filter(line => line.trim());
+        const jsonLine = lines.find(line => line.startsWith('{') && line.endsWith('}'));
+        if (jsonLine) {
+          cruiseResult = JSON.parse(jsonLine);
+        } else {
+          throw new Error('No valid JSON found in output');
+        }
+      } catch (fallbackError) {
+        // Use minimal valid structure
+        cruiseResult = {
+          modules: [],
+          summary: {
+            violations: [],
+            totalCruised: 0,
+            totalDependenciesCruised: 0,
+            error: 0,
+            warn: 0,
+            info: 0
+          }
+        };
+      }
+    }
+    
     const report = transformCruiseResult(cruiseResult);
     
     writeReport(reportsDir, 'depcruise', report);

@@ -1,5 +1,6 @@
 import { readReport, writeReport, getReportsDir, cleanReportsDir } from './paths.js';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ESLintReport, runEslint } from './runners/eslint.js';
 import { DepCruiseReport, runDepCruise } from './runners/depcruise.js';
 import { KnipReport, runKnip } from './runners/knip.js';
@@ -112,7 +113,6 @@ export async function aggregateReports(reportsDir: string): Promise<AggregatedSt
 
 function countFunctionsInFile(filePath: string): { functions: number; avgLength: number; maxLength: number } {
   try {
-    const fs = require('fs');
     if (!fs.existsSync(filePath)) {
       return { functions: 0, avgLength: 0, maxLength: 0 };
     }
