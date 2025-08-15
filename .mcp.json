@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "browsermcp": {
+      "command": "npx",
+      "args": ["@browsermcp/mcp@latest"]
+    },
+    "code-health": {
+      "command": "code-health-mcp",
+      "env": {
+        "CODE_HEALTH_AUTO_START": "true",
+        "CODE_HEALTH_PORT": "3020"
+      }
+    }
+  }
+}

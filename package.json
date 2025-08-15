@@ -1,0 +1,77 @@
+{
+  "name": "@butter/code-health",
+  "version": "1.0.0",
+  "description": "Global Node.js CLI for code health analysis with browser dashboard",
+  "bin": {
+    "code-health": "./bin/code-health.js",
+    "code-health-mcp": "./bin/code-health-mcp.js"
+  },
+  "main": "dist/index.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:cli && npm run build:mcp && npm run build:ui",
+    "build:cli": "tsup src/index.ts --format cjs --target node18 --outDir dist --minify",
+    "build:mcp": "tsup src/mcp/server.ts --format esm --target node18 --outDir dist --minify --shims",
+    "build:ui": "cd ui && vite build --outDir ../dist/ui",
+    "dev": "tsup src/index.ts --format cjs --target node18 --outDir dist --watch",
+    "dev:ui": "cd ui && vite dev",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "code-health",
+    "static-analysis",
+    "eslint",
+    "dependency-analysis",
+    "code-quality",
+    "dashboard",
+    "cli",
+    "mcp",
+    "model-context-protocol",
+    "typescript",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@fastify/static": "^7.0.0",
+    "@fastify/websocket": "^10.0.0",
+    "@modelcontextprotocol/sdk": "^1.17.3",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "chalk": "^4.1.2",
+    "chokidar": "^3.6.0",
+    "commander": "^12.0.0",
+    "dependency-cruiser": "^16.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-regexp": "^2.0.0",
+    "eslint-plugin-sonarjs": "^2.0.0",
+    "eslint-plugin-unicorn": "^56.0.0",
+    "fastify": "^4.28.0",
+    "glob": "^10.3.0",
+    "globby": "^14.0.0",
+    "ignore": "^5.3.0",
+    "knip": "^5.0.0",
+    "open": "^10.0.0",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
