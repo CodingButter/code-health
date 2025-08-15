@@ -37,7 +37,7 @@ export function ComplexityChart({ functions }: ComplexityChartProps) {
           <CardTitle>Complexity Trends</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[300px] text-gray-500">
+          <div className="flex items-center justify-center h-[300px] text-gray-500 dark:text-gray-400">
             No complexity issues found
           </div>
         </CardContent>
@@ -53,20 +53,22 @@ export function ComplexityChart({ functions }: ComplexityChartProps) {
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e1e4e8" />
+            <CartesianGrid strokeDasharray="3 3" stroke={document.documentElement.classList.contains('dark') ? '#374151' : '#e1e4e8'} />
             <XAxis 
               dataKey="name" 
               angle={-45} 
               textAnchor="end" 
               height={100}
-              tick={{ fontSize: 10 }}
+              tick={{ fontSize: 10, fill: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#374151' }}
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12, fill: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#374151' }} />
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: '#ffffff',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px'
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                border: '1px solid',
+                borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#d1d5db',
+                borderRadius: '6px',
+                color: document.documentElement.classList.contains('dark') ? '#f3f4f6' : '#374151'
               }}
             />
             <Area 

@@ -7,8 +7,8 @@ import {
   TrendingDown,
   Minus
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card'
-import { formatNumber, calculatePercentage } from '../../lib/utils'
+import { Card, CardContent, CardDescription, CardHeader } from '../ui/Card'
+import { formatNumber } from '../../lib/utils'
 
 interface MetricCardsProps {
   filesAnalyzed: number
@@ -41,7 +41,7 @@ export function MetricCards({
       icon: AlertTriangle,
       description: 'Need refactoring',
       trend: complexFunctions > 0 ? 'up' : 'none',
-      color: complexFunctions > 0 ? 'text-yellow-600' : 'text-green-600'
+      color: complexFunctions > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Long Functions',
@@ -49,7 +49,7 @@ export function MetricCards({
       icon: AlertTriangle,
       description: 'Exceed line limits',
       trend: maxLineViolations > 0 ? 'up' : 'none',
-      color: maxLineViolations > 0 ? 'text-orange-600' : 'text-green-600'
+      color: maxLineViolations > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'
     },
     {
       title: 'Circular Dependencies',
@@ -57,7 +57,7 @@ export function MetricCards({
       icon: GitBranch,
       description: cycles === 0 ? 'No cycles detected' : 'Dependency cycles',
       trend: cycles > 0 ? 'up' : 'none',
-      color: cycles === 0 ? 'text-green-600' : 'text-red-600'
+      color: cycles === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
     },
     {
       title: 'Dead Code',
@@ -65,7 +65,7 @@ export function MetricCards({
       icon: CheckCircle,
       description: deadCode === 0 ? 'No unused code' : 'Unused exports',
       trend: deadCode > 0 ? 'up' : 'none',
-      color: deadCode === 0 ? 'text-green-600' : 'text-yellow-600'
+      color: deadCode === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'
     }
   ]
 
@@ -74,11 +74,11 @@ export function MetricCards({
     
     switch (trend) {
       case 'up':
-        return <TrendingUp className="h-4 w-4 text-red-500" />
+        return <TrendingUp className="h-4 w-4 text-red-500 dark:text-red-400" />
       case 'down':
-        return <TrendingDown className="h-4 w-4 text-green-500" />
+        return <TrendingDown className="h-4 w-4 text-green-500 dark:text-green-400" />
       default:
-        return <Minus className="h-4 w-4 text-gray-400" />
+        return <Minus className="h-4 w-4 text-gray-400 dark:text-gray-500" />
     }
   }
 
@@ -91,17 +91,17 @@ export function MetricCards({
             <CardHeader className="pb-2">
               <CardDescription className="flex items-center justify-between">
                 <span>{metric.title}</span>
-                <Icon className="h-4 w-4 text-gray-400" />
+                <Icon className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <p className={`text-2xl font-bold ${metric.color || ''}`}>
+                <p className={`text-2xl font-bold ${metric.color || 'text-gray-900 dark:text-gray-100'}`}>
                   {formatNumber(metric.value)}
                 </p>
                 {getTrendIcon(metric.trend)}
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {metric.description}
               </p>
             </CardContent>

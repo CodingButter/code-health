@@ -6,15 +6,23 @@
 @layer base {
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    background-color: #f6f8fa;
-    color: #1f2328;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* Light mode */
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+  
+  /* Dark mode */
+  body.dark {
+    @apply bg-gray-900 text-gray-100;
+  }
 
   * {
-    border-color: #d1d9e0;
+    @apply border-gray-200 dark:border-gray-700;
   }
 }
 

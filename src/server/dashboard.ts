@@ -9,7 +9,7 @@ import { runAnalysis } from '../core/aggregate.js';
 import { watchForChanges } from '../core/watch.js';
 
 // Handle both ESM and CJS environments
-let __dirname: string;
+let __dirname: string = process.cwd();
 try {
   if (typeof import.meta !== 'undefined' && import.meta.url) {
     const __filename = fileURLToPath(import.meta.url);
@@ -23,13 +23,13 @@ try {
       __dirname = path.dirname(mainPath);
     } else {
       // Last resort - assume we're running from the project root
-      __dirname = path.join(__dirname || process.cwd(), 'dist');
+      __dirname = path.join(process.cwd(), 'dist');
     }
   }
 } catch {
   // Final fallback - look for dist relative to node_modules/@butter/code-health
   // This handles the globally installed case
-  const pkgPath = path.resolve(__dirname || process.cwd(), '..');
+  const pkgPath = path.resolve(process.cwd(), '..');
   __dirname = path.join(pkgPath, 'dist');
 }
 
@@ -156,6 +156,76 @@ export async function startDashboardServer(config: Config) {
     } catch (error) {
       console.error('API error:', error);
       reply.code(500).send({ error: 'Analysis failed' });
+    }
+  });
+
+  // File detail API endpoint
+  fastify.get('/api/file-detail', async (request, reply) => {
+    try {
+      console.log('File detail API called with query:', request.query);
+      const file = (request.query as any)?.file;
+      
+      if (!file) {
+        console.log('No file parameter provided');
+        return reply.code(400).send({
+          error: 'File parameter is required'
+        });
+      }
+      
+      console.log('Looking for file:', file);
+      
+      if (analysisPromise) {
+        await analysisPromise;
+        analysisPromise = null;
+      }
+      
+      if (!latestResults.current) {
+        return reply.code(503).send({ error: 'Analysis not ready yet' });
+      }
+
+      const aggregatedStats = latestResults.current;
+      console.log('Available files:', aggregatedStats?.largestFiles?.slice(0, 3).map((f: any) => f.file));
+      
+      // Find file metrics (handle both relative and absolute paths)
+      const fileMetrics = aggregatedStats?.largestFiles?.find((f: any) => 
+        f.file === file || f.file.endsWith(file) || file.endsWith(f.file)
+      );
+      
+      if (!fileMetrics) {
+        console.log('File not found in analysis');
+        return reply.code(404).send({
+          error: 'File not found in analysis',
+          searchedFor: file,
+          availableFiles: aggregatedStats?.largestFiles?.slice(0, 5).map((f: any) => f.file)
+        });
+      }
+
+      // Return basic file metrics for now
+      return reply.send({
+        metrics: fileMetrics,
+        eslintIssues: [],
+        dependencies: [],
+        dependents: [],
+        complexityIssues: aggregatedStats.complexFunctions?.filter((f: any) => 
+          f.file === file || f.file.endsWith(file) || file.endsWith(f.file)
+        ) || [],
+        lineViolations: aggregatedStats.maxLineOffenders?.filter((f: any) => 
+          f.file === file || f.file.endsWith(file) || file.endsWith(f.file)
+        ) || [],
+        deadCodeIssues: aggregatedStats.deadCode?.filter((f: any) => 
+          f.file === file || f.file.endsWith(file) || file.endsWith(f.file)
+        ) || [],
+        summary: {
+          totalIssues: 0,
+          hasCircularDeps: false,
+          isDeadCode: false
+        }
+      });
+    } catch (error) {
+      console.error('Error reading file details:', error);
+      return reply.code(500).send({
+        error: 'Failed to read file analysis data'
+      });
     }
   });
 

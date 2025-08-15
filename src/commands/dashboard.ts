@@ -31,22 +31,14 @@ export async function dashboardCommand(config: Config, watch: boolean): Promise<
     // Keep process alive and handle graceful shutdown
     process.on('SIGINT', async () => {
       console.log('\n\n🛑 Shutting down dashboard server...');
-      if (server.cleanup) {
-        await server.cleanup();
-      } else {
-        await server.close();
-      }
+      await server.close();
       console.log('✅ Dashboard stopped');
       process.exit(0);
     });
     
     process.on('SIGTERM', async () => {
       console.log('\n\n🛑 Shutting down dashboard server...');
-      if (server.cleanup) {
-        await server.cleanup();
-      } else {
-        await server.close();
-      }
+      await server.close();
       console.log('✅ Dashboard stopped');
       process.exit(0);
     });

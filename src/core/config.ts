@@ -172,7 +172,7 @@ export async function detectMonorepo(cwd: string): Promise<{
   // Default fallback patterns
   const defaultPatterns = ['apps/*', 'packages/*'];
   const hasMonorepoStructure = defaultPatterns.some(pattern => {
-    const matches = glob.sync(pattern, { cwd, onlyDirectories: true });
+    const matches = glob.sync(pattern, { cwd });
     return matches.length > 0;
   });
   

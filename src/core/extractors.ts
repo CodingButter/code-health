@@ -2,12 +2,18 @@ import { ESLintReport } from './runners/eslint.js';
 import { DepCruiseReport } from './runners/depcruise.js';
 import { KnipReport } from './runners/knip.js';
 import { ClocReport } from './runners/cloc.js';
-import { AggregatedStats } from './aggregate.js';
+import { AggregatedStats, FileMetrics } from './aggregate.js';
 
 /**
  * Extract largest files from cloc report
  */
-export function extractLargestFiles(clocReport: ClocReport | null): AggregatedStats['largestFiles'] {
+export function extractLargestFiles(clocReport: ClocReport | null): Array<{
+  file: string;
+  loc: number;
+  code: number;
+  comment: number;
+  blank: number;
+}> {
   if (!clocReport?.files) {
     return [];
   }

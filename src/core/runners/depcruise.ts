@@ -163,7 +163,8 @@ export async function runDepCruise(
     }
     
     // Log summary
-    logger.log(`Dependency analysis complete: ${cycles.length} circular dependencies found`);
+    const cycleCount = report.summary?.violations?.filter((v: any) => v.type === 'circular')?.length || 0;
+    logger.log(`Dependency analysis complete: ${cycleCount} circular dependencies found`);
     
   } catch (error) {
     logger.error('Dependency-cruiser runner failed:', error);

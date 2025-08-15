@@ -6,7 +6,7 @@
     },
     "code-health": {
       "command": "npx",
-      "args": ["butter-code-health@latest", "code-health-mcp"],
+      "args": ["--yes", "--package=butter-code-health@latest", "code-health-mcp"],
       "env": {
         "CODE_HEALTH_AUTO_START": "true",
         "CODE_HEALTH_PORT": "3020"

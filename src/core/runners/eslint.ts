@@ -134,9 +134,17 @@ export async function runEslint(
       return !ignoreConfig.ignorer.ignores(relativePath);
     });
     
-    // Create report
+    // Create report with normalized messages
+    const normalizedResults = filteredResults.map(result => ({
+      ...result,
+      messages: result.messages.filter(m => m.ruleId !== null).map(m => ({
+        ...m,
+        ruleId: m.ruleId as string // Safe to cast after filtering null
+      }))
+    }));
+    
     const report: ESLintReport = {
-      results: filteredResults,
+      results: normalizedResults,
       version: ESLint.version,
       timestamp: new Date().toISOString()
     };
