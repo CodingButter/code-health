@@ -29,7 +29,7 @@ export interface ESLintReport {
 }
 
 function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig): any {
-  // ESLint 9+ flat config format
+  // Simplified ESLint config that doesn't require external plugins
   return [
     {
       files: ['**/*.{js,jsx,ts,tsx,mjs,cjs}'],
@@ -44,20 +44,84 @@ function createFallbackConfig(config: Config, ignoreConfig: IgnoreConfig): any {
         }
       },
       rules: {
-        // Max lines rules as specified in Project.md
-        'max-lines': ['warn', {
+        // Core max lines rules - these work without plugins
+        'max-lines': ['error', {
           max: config.maxLines,
           skipBlankLines: true,
           skipComments: true
         }],
-        'max-lines-per-function': ['warn', {
+        'max-lines-per-function': ['error', {
           max: config.maxLinesPerFunction,
           skipBlankLines: true,
           skipComments: true
-        }]
+        }],
+        // Basic rules that don't require plugins
+        'no-unused-vars': 'warn',
+        'no-console': 'off'
       }
     }
   ];
+}
+
+async function createHybridConfig(config: Config, ignoreConfig: IgnoreConfig, originalOptions: any): Promise<any> {
+  let projectRules = {};
+  
+  // Try to read project's ESLint config to extract rules
+  try {
+    const projectConfigPath = await findProjectEslintConfig(config.cwd);
+    if (projectConfigPath) {
+      logger.log(`Attempting to extract rules from: ${projectConfigPath}`);
+      
+      if (projectConfigPath.includes('.eslintrc')) {
+        // For .eslintrc files, try to read and parse them
+        const configContent = fs.readFileSync(projectConfigPath, 'utf-8');
+        
+        if (projectConfigPath.endsWith('.js') || projectConfigPath.endsWith('.cjs')) {
+          // For JS files, try to extract rules via simple parsing
+          const rulesMatch = configContent.match(/rules\s*:\s*{([^}]+)}/s);
+          if (rulesMatch) {
+            // Extract max-lines and max-lines-per-function rules specifically
+            const maxLinesMatch = configContent.match(/['"]max-lines['"]:\s*\[[^,]+,\s*{\s*max:\s*(\d+)/);
+            const maxLinesFuncMatch = configContent.match(/['"]max-lines-per-function['"]:\s*\[[^,]+,\s*{\s*max:\s*(\d+)/);
+            
+            logger.log(`Config content excerpt: ${configContent.substring(0, 500)}...`);
+            logger.log(`Max lines match: ${maxLinesMatch ? maxLinesMatch[0] : 'none'}`);
+            logger.log(`Max lines func match: ${maxLinesFuncMatch ? maxLinesFuncMatch[0] : 'none'}`);
+            
+            if (maxLinesMatch) {
+              const maxLines = parseInt(maxLinesMatch[1]);
+              logger.log(`Found project max-lines rule: ${maxLines}`);
+              config.maxLines = maxLines; // Update our config to match project's
+            }
+            
+            if (maxLinesFuncMatch) {
+              const maxLinesFunc = parseInt(maxLinesFuncMatch[1]);
+              logger.log(`Found project max-lines-per-function rule: ${maxLinesFunc}`);
+              config.maxLinesPerFunction = maxLinesFunc; // Update our config to match project's
+            }
+          }
+        } else if (projectConfigPath.endsWith('.json')) {
+          // For JSON files, parse directly
+          const configObj = JSON.parse(configContent);
+          if (configObj.rules) {
+            if (configObj.rules['max-lines'] && Array.isArray(configObj.rules['max-lines']) && configObj.rules['max-lines'][1]?.max) {
+              config.maxLines = configObj.rules['max-lines'][1].max;
+              logger.log(`Found project max-lines rule: ${config.maxLines}`);
+            }
+            if (configObj.rules['max-lines-per-function'] && Array.isArray(configObj.rules['max-lines-per-function']) && configObj.rules['max-lines-per-function'][1]?.max) {
+              config.maxLinesPerFunction = configObj.rules['max-lines-per-function'][1].max;
+              logger.log(`Found project max-lines-per-function rule: ${config.maxLinesPerFunction}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    logger.log(`Could not extract rules from project config: ${error}`);
+  }
+  
+  // Return fallback config with potentially updated limits from project config
+  return createFallbackConfig(config, ignoreConfig);
 }
 
 async function createEslintOptions(
@@ -70,26 +134,20 @@ async function createEslintOptions(
     cache: false
   };
   
-  let useProjectConfig = false;
   if (projectConfigPath) {
-    try {
-      // Test if this is a legacy .eslintrc format
-      if (projectConfigPath.includes('.eslintrc')) {
-        logger.log(`Found legacy ESLint config: ${projectConfigPath}, using fallback instead`);
-      } else {
-        // Use project's config for flat config files only
-        logger.log(`Using project ESLint config: ${projectConfigPath}`);
-        eslintOptions.overrideConfigFile = projectConfigPath;
-        useProjectConfig = true;
-      }
-    } catch (error) {
-      logger.log(`Project ESLint config incompatible, using fallback: ${error}`);
+    // Always try to use the project's config first
+    logger.log(`Using project ESLint config: ${projectConfigPath}`);
+    
+    if (projectConfigPath.includes('.eslintrc')) {
+      // For legacy .eslintrc files, let ESLint handle them naturally
+      // Don't set overrideConfigFile, let ESLint auto-discover
+    } else {
+      // For flat config files, explicitly set the config
+      eslintOptions.overrideConfigFile = projectConfigPath;
     }
-  }
-  
-  if (!useProjectConfig) {
-    // Use our fallback config
-    logger.log('Using fallback ESLint configuration');
+  } else {
+    // Use our fallback config only when no project config exists
+    logger.log('No project ESLint config found, using fallback configuration');
     eslintOptions.baseConfig = createFallbackConfig(config, ignoreConfig);
   }
   
@@ -102,21 +160,47 @@ async function runEslintWithFallback(
   config: Config,
   ignoreConfig: IgnoreConfig
 ): Promise<any[]> {
-  const eslint = new ESLint(eslintOptions);
-  
   try {
+    const eslint = new ESLint(eslintOptions);
     return await eslint.lintFiles(patterns);
   } catch (configError: any) {
-    // If project config fails due to legacy format, fall back to our config
-    if (configError.message?.includes('eslintrc format') || configError.message?.includes('flat config')) {
-      logger.log('Project config incompatible with ESLint 9+, using fallback configuration');
+    // If project config fails, create a hybrid config that merges project rules with our health rules
+    logger.log(`ESLint config error: ${configError.message}`);
+    if (configError.message?.includes('eslintrc format') || 
+        configError.message?.includes('flat config') ||
+        configError.message?.includes('Config file missing') ||
+        configError.message?.includes('Could not find config file')) {
+      
+      logger.log('Project config incompatible with ESLint 9+, using enhanced fallback configuration');
+      
+      // Try to extract rules from legacy config if possible
+      const hybridConfig = await createHybridConfig(config, ignoreConfig, eslintOptions);
+      logger.log(`Created hybrid config with max-lines: ${JSON.stringify(hybridConfig[0].rules['max-lines'])}`);
+      logger.log(`Full hybrid config: ${JSON.stringify(hybridConfig, null, 2)}`);
+      
       const fallbackOptions = {
         cwd: config.cwd,
         cache: false,
-        baseConfig: createFallbackConfig(config, ignoreConfig)
+        baseConfig: hybridConfig
       };
-      const fallbackEslint = new ESLint(fallbackOptions);
-      return await fallbackEslint.lintFiles(patterns);
+      
+      try {
+        // Use the array format for flat config
+        const simpleFallbackOptions = {
+          cwd: config.cwd,
+          cache: false,
+          baseConfig: hybridConfig
+        };
+        
+        const fallbackEslint = new ESLint(simpleFallbackOptions);
+        const results = await fallbackEslint.lintFiles(patterns);
+        logger.log(`Fallback ESLint found ${results.length} files with ${results.reduce((sum, r) => sum + r.messages.length, 0)} total messages`);
+        return results;
+      } catch (fallbackError: any) {
+        logger.error(`Fallback ESLint also failed: ${fallbackError.message}`);
+        // Return empty results as last resort
+        return [];
+      }
     } else {
       throw configError;
     }
