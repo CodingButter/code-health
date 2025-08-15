@@ -123,7 +123,7 @@ function createUpdateAnalysis(fastify: any, config: Config, latestResults: { cur
   };
 }
 
-export async function startDashboardServer(config: Config) {
+async function setupDashboardServer(config: Config) {
   const fastify = Fastify({ logger: false });
 
   await fastify.register(fastifyCors, { origin: true });
@@ -140,7 +140,21 @@ export async function startDashboardServer(config: Config) {
     analysisPromise = updateAnalysis();
   });
 
-  fastify.get('/api/stats', async (request, reply) => {
+  return { fastify, latestResults, analysisPromise, watcher, updateAnalysis };
+}
+
+export async function startDashboardServer(config: Config) {
+  const { fastify, latestResults, analysisPromise, watcher } = await setupDashboardServer(config);
+  
+  setupStatsApi(fastify, latestResults, analysisPromise);
+  setupFileDetailApi(fastify, latestResults, analysisPromise);
+  setupWebSocketApi(fastify, latestResults);
+  
+  return await finalizeDashboardServer(fastify, config, watcher);
+}
+
+function setupStatsApi(fastify: any, latestResults: any, analysisPromise: any) {
+  fastify.get('/api/stats', async (request: any, reply: any) => {
     try {
       if (analysisPromise) {
         await analysisPromise;
@@ -158,9 +172,11 @@ export async function startDashboardServer(config: Config) {
       reply.code(500).send({ error: 'Analysis failed' });
     }
   });
+}
 
+function setupFileDetailApi(fastify: any, latestResults: any, analysisPromise: any) {
   // File detail API endpoint
-  fastify.get('/api/file-detail', async (request, reply) => {
+  fastify.get('/api/file-detail', async (request: any, reply: any) => {
     try {
       console.log('File detail API called with query:', request.query);
       const file = (request.query as any)?.file;
@@ -228,9 +244,11 @@ export async function startDashboardServer(config: Config) {
       });
     }
   });
+}
 
-  fastify.register(async function (fastify) {
-    fastify.get('/ws', { websocket: true }, (connection, req) => {
+function setupWebSocketApi(fastify: any, latestResults: any) {
+  fastify.register(async function (fastify: any) {
+    fastify.get('/ws', { websocket: true }, (connection: any, req: any) => {
       console.error('🔌 WebSocket client connected');
       
       if (latestResults.current) {
@@ -245,7 +263,9 @@ export async function startDashboardServer(config: Config) {
       });
     });
   });
+}
 
+async function finalizeDashboardServer(fastify: any, config: Config, watcher: any) {
   const uiPath = await findUIPath();
   await setupStaticFiles(fastify, uiPath);
   const actualPort = await startServerWithRetry(fastify, config)
