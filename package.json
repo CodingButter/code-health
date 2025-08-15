@@ -1,6 +1,6 @@
 {
   "name": "butter-code-health",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Global Node.js CLI for code health analysis with browser dashboard",
   "bin": {
     "code-health": "./bin/code-health.js",
