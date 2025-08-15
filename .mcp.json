@@ -5,7 +5,8 @@
       "args": ["@browsermcp/mcp@latest"]
     },
     "code-health": {
-      "command": "code-health-mcp",
+      "command": "npx",
+      "args": ["butter-code-health@latest", "code-health-mcp"],
       "env": {
         "CODE_HEALTH_AUTO_START": "true",
         "CODE_HEALTH_PORT": "3020"

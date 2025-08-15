@@ -1,20 +1,20 @@
 {
   "mcpServers": {
     "code-health": {
-      "command": "code-health-mcp",
-      "args": [],
+      "command": "npx",
+      "args": ["butter-code-health@latest", "code-health-mcp"],
       "_comment": "Configuration examples below:",
       
       "_example_1_basic": {
         "_description": "Basic configuration (manual dashboard start via tools)",
-        "command": "code-health-mcp",
-        "args": []
+        "command": "npx",
+        "args": ["butter-code-health@latest", "code-health-mcp"]
       },
       
       "_example_2_auto_start": {
         "_description": "Auto-start dashboard when MCP server starts",
-        "command": "code-health-mcp",
-        "args": ["--port=3020", "--auto-start"],
+        "command": "npx",
+        "args": ["butter-code-health@latest", "code-health-mcp"],
         "env": {
           "CODE_HEALTH_AUTO_START": "true",
           "CODE_HEALTH_PORT": "3020"
@@ -23,8 +23,11 @@
       
       "_example_3_custom_port": {
         "_description": "Custom port without auto-start",
-        "command": "code-health-mcp",
-        "args": ["--port=8080"]
+        "command": "npx",
+        "args": ["butter-code-health@latest", "code-health-mcp"],
+        "env": {
+          "CODE_HEALTH_PORT": "8080"
+        }
       }
     }
   }

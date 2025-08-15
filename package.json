@@ -1,5 +1,5 @@
 {
-  "name": "@butter/code-health",
+  "name": "butter-code-health",
   "version": "1.0.0",
   "description": "Global Node.js CLI for code health analysis with browser dashboard",
   "bin": {

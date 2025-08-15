@@ -1,4 +1,4 @@
-# @butter/code-health
+# butter-code-health
 
 A global Node.js CLI tool that analyzes code health in TypeScript/JavaScript projects and provides a beautiful browser-based dashboard for visualizing static analysis results.
 
@@ -15,12 +15,12 @@ A global Node.js CLI tool that analyzes code health in TypeScript/JavaScript pro
 
 Install globally:
 ```bash
-npm install -g @butter/code-health
+npm install -g butter-code-health
 ```
 
 Or run directly with npx:
 ```bash
-npx @butter/code-health dashboard
+npx butter-code-health dashboard
 ```
 
 ## Usage
@@ -77,6 +77,27 @@ code-health print --max-lines 300 --complexity-threshold 10
 - `--max-lines <n>` - Max lines per file (default: 400)
 - `--max-lines-per-function <n>` - Max lines per function (default: 80)
 - `--complexity-threshold <n>` - Cognitive complexity threshold (default: 15)
+
+## MCP (Model Context Protocol) Integration
+
+The tool includes an MCP server for AI assistant integration. Add to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "code-health": {
+      "command": "npx",
+      "args": ["butter-code-health@latest", "code-health-mcp"],
+      "env": {
+        "CODE_HEALTH_AUTO_START": "true",
+        "CODE_HEALTH_PORT": "3020"
+      }
+    }
+  }
+}
+```
+
+This allows AI assistants to analyze your code health directly.
 
 ## What It Analyzes
 
@@ -147,16 +168,16 @@ While the tool works with zero configuration, it respects existing project confi
 ### Analyze a TypeScript monorepo
 ```bash
 cd /path/to/monorepo
-npx @butter/code-health dashboard --watch --open
+npx butter-code-health dashboard --watch --open
 ```
 
 ### CI/CD Integration
 ```bash
 # In your CI pipeline
-npx @butter/code-health print --format json > code-health.json
+npx butter-code-health print --format json > code-health.json
 
 # Or fail on violations
-npx @butter/code-health print --max-lines 500 --complexity-threshold 20
+npx butter-code-health print --max-lines 500 --complexity-threshold 20
 ```
 
 ### Custom Analysis
@@ -176,7 +197,7 @@ This tool can be used as an MCP server, making it available to AI assistants lik
 
 Install globally:
 ```bash
-npm install -g @butter/code-health
+npm install -g butter-code-health
 ```
 
 Add to your `.mcp.json` file in your project root:
@@ -197,7 +218,7 @@ Or use with npx (if not installed globally):
   "mcpServers": {
     "code-health": {
       "command": "npx",
-      "args": ["@butter/code-health", "code-health-mcp"]
+      "args": ["butter-code-health", "code-health-mcp"]
     }
   }
 }
